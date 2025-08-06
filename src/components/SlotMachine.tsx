@@ -148,7 +148,7 @@ export const SlotMachine = () => {
           <div className="text-center mb-6">
             <div className="bg-slot-reel border-2 border-slot-gold rounded-lg p-4">
               <div className="text-slot-gold text-lg font-mono">
-                Current: {currentValues.first}{currentValues.second}{currentValues.third}
+                Current: {!isSpinning ? `${currentValues.first}${currentValues.second}${currentValues.third}` : '---'}
               </div>
             </div>
           </div>
