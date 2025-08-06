@@ -37,14 +37,18 @@ export const SlotReel = forwardRef<SlotReelRef, SlotReelProps>(
           spinIntervalRef.current = null;
         }
         
-        // Get random final value
+        // Choose a random final position, but ensure we return the item that will be in the center
         const finalIndex = Math.floor(Math.random() * items.length);
-        const finalValue = items[finalIndex];
         
-        setDisplayIndex(finalIndex);
+        // Set the display so that the chosen item appears in the center (index 2 of visible items)
+        // We need to offset by 2 to put our target item in the center viewing window
+        const centerOffset = 2;
+        const adjustedIndex = (finalIndex + items.length - centerOffset) % items.length;
+        setDisplayIndex(adjustedIndex);
         setIsSpinning(false);
         
-        return finalValue;
+        // Return the item that will actually be visible in the center window
+        return items[finalIndex];
       }
     }));
 
