@@ -14,9 +14,10 @@ export interface SlotReelRef {
 
 export const SlotReel = forwardRef<SlotReelRef, SlotReelProps>(
   ({ items, currentValue, isWinning }, ref) => {
-    const [isSpinning, setIsSpinning] = useState(false);
-    const [displayIndex, setDisplayIndex] = useState(0);
-    const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [displayIndex, setDisplayIndex] = useState(0);
+  const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const spinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Create extended array for smooth spinning effect
     const extendedItems = [...items, ...items, ...items];
@@ -24,30 +25,85 @@ export const SlotReel = forwardRef<SlotReelRef, SlotReelProps>(
     useImperativeHandle(ref, () => ({
       startSpin: () => {
         setIsSpinning(true);
-        let currentIndex = 0;
         
-        spinIntervalRef.current = setInterval(() => {
-          currentIndex = (currentIndex + 1) % extendedItems.length;
-          setDisplayIndex(currentIndex);
-        }, 50);
+        // Clear any existing timeouts
+        if (spinIntervalRef.current) clearInterval(spinIntervalRef.current);
+        if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+        
+        let currentIndex = 0;
+        let spinStep = 0;
+        const totalSteps = 150; // Total animation steps
+        
+        const spin = () => {
+          if (spinStep < totalSteps) {
+            // Easing function: slow start, fast middle, slow end
+            let speed;
+            const progress = spinStep / totalSteps;
+            
+            if (progress < 0.2) {
+              // Acceleration phase (0-20%)
+              speed = 20 + (progress / 0.2) * 130; // 20ms to 150ms
+            } else if (progress < 0.8) {
+              // Fast phase (20-80%)
+              speed = 20; // Fastest speed
+            } else {
+              // Deceleration phase (80-100%)
+              const decelProgress = (progress - 0.8) / 0.2;
+              speed = 20 + (decelProgress * decelProgress) * 200; // Quadratic easing out
+            }
+            
+            currentIndex = (currentIndex + 1) % extendedItems.length;
+            setDisplayIndex(currentIndex);
+            spinStep++;
+            
+            spinTimeoutRef.current = setTimeout(spin, speed);
+          }
+        };
+        
+        spin();
       },
       stopSpin: () => {
+        // Clear any running animations
         if (spinIntervalRef.current) {
           clearInterval(spinIntervalRef.current);
           spinIntervalRef.current = null;
         }
+        if (spinTimeoutRef.current) {
+          clearTimeout(spinTimeoutRef.current);
+          spinTimeoutRef.current = null;
+        }
         
-        // Choose a random final position, but ensure we return the item that will be in the center
+        // Choose a random final position
         const finalIndex = Math.floor(Math.random() * items.length);
         
-        // Set the display so that the chosen item appears in the center (index 2 of visible items)
-        // We need to offset by 2 to put our target item in the center viewing window
-        const centerOffset = 2;
-        const adjustedIndex = (finalIndex + items.length - centerOffset) % items.length;
-        setDisplayIndex(adjustedIndex);
-        setIsSpinning(false);
+        // Perform final eased settling animation
+        let settleStep = 0;
+        const settleSteps = 20;
+        let currentSettleIndex = displayIndex;
+        const targetIndex = (finalIndex + items.length - 2) % items.length;
         
-        // Return the item that will actually be visible in the center window
+        const settle = () => {
+          if (settleStep < settleSteps) {
+            const progress = settleStep / settleSteps;
+            const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+            
+            const indexDiff = ((targetIndex - displayIndex + extendedItems.length) % extendedItems.length);
+            const adjustedDiff = indexDiff > extendedItems.length / 2 ? indexDiff - extendedItems.length : indexDiff;
+            
+            currentSettleIndex = displayIndex + Math.round(easedProgress * adjustedDiff);
+            setDisplayIndex(currentSettleIndex % extendedItems.length);
+            
+            settleStep++;
+            const settleSpeed = 50 + (progress * 100); // Gradually slow down
+            spinTimeoutRef.current = setTimeout(settle, settleSpeed);
+          } else {
+            // Final position
+            setDisplayIndex(targetIndex);
+            setIsSpinning(false);
+          }
+        };
+        
+        settle();
         return items[finalIndex];
       }
     }));
