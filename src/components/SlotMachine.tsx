@@ -80,12 +80,15 @@ export const SlotMachine = () => {
           
           // Check for win after all reels have stopped
           if (Object.keys(finalValues).length === 3) {
-            setCurrentValues(finalValues);
-            const winningMonth = checkWinningCombination(finalValues);
-            if (winningMonth) {
-              setWinner(winningMonth);
-            }
-            setIsSpinning(false);
+            // Wait for visual animation to complete before showing results
+            setTimeout(() => {
+              setCurrentValues(finalValues);
+              const winningMonth = checkWinningCombination(finalValues);
+              if (winningMonth) {
+                setWinner(winningMonth);
+              }
+              setIsSpinning(false);
+            }, 2500); // Wait for settling animation to complete
           }
         }
       }, time);
